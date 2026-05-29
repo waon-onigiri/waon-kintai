@@ -733,19 +733,31 @@ const INITIAL_STAFF = [
 ];
 
 window.addEventListener('load', () => {
-  // プリセット設定があれば自動で保存して接続
-  if (!localStorage.getItem(CFG_KEY)) {
-    localStorage.setItem(CFG_KEY, JSON.stringify(PRESET_CONFIG));
-  }
-  const cfg = loadCfg();
-  cfg ? tryConnect(cfg) : showScreen('screen-setup');
   tickClock();
   setInterval(tickClock, 1000);
   bindTabs();
+  // PRESET_CONFIGで直接起動（localStorage不要）
+  bootWithPreset();
 });
 
 function loadCfg() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY)); } catch { return null; }
+}
+
+function bootWithPreset() {
+  try {
+    if (firebase.apps.length) {
+      firebase.apps.forEach(a => { try { a.delete(); } catch {} });
+    }
+    firebase.initializeApp(PRESET_CONFIG);
+    db = firebase.database();
+    localStorage.setItem(CFG_KEY, JSON.stringify(PRESET_CONFIG));
+    launchApp();
+  } catch(e) {
+    console.error('Boot error:', e);
+    showScreen('screen-setup');
+    toast('起動エラー。ページを再読み込みしてください。', 'error');
+  }
 }
 
 async function tryConnect(cfg) {
@@ -1204,11 +1216,4 @@ async function loadSal() {
         const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
         let workStart = null;
         arr.forEach(r => {
-          if (r.type==='in' || r.type==='return') workStart = r.ts;
-          if ((r.type==='out' || r.type==='break') && workStart) { totalMs += r.ts - workStart; workStart = null; }
-        });
-      }
-    });
-    const hours = totalMs / 3600000;
-    const h = Math.floor(hours), mn = Math.floor((hours-h)*60);
-    const 
+          if (r.type=
