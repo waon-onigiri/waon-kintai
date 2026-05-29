@@ -750,14 +750,14 @@ function loadCfg() {
 
 async function tryConnect(cfg) {
   try {
-    if (firebase.apps.length) await Promise.all(firebase.apps.map(a => a.delete()));
+    if (firebase.apps.length) {
+      try { await Promise.all(firebase.apps.map(a => a.delete())); } catch {}
+    }
     firebase.initializeApp(cfg);
     db = firebase.database();
-    await db.ref('.info/connected').once('value');
     launchApp();
   } catch(e) {
-    console.error(e);
-    localStorage.removeItem(CFG_KEY);
+    console.error('Firebase init error:', e);
     showScreen('screen-setup');
     toast('Firebase接続エラー。再設定してください。', 'error');
   }
@@ -1210,4 +1210,5 @@ async function loadSal() {
       }
     });
     const hours = totalMs / 3600000;
-    const h = Math.floor(hours), mn = Ma
+    const h = Math.floor(hours), mn = Math.floor((hours-h)*60);
+    const 
