@@ -733,9 +733,9 @@ const INITIAL_STAFF = [
 ];
 
 window.addEventListener('load', () => {
-  tickClock();
+  try { tickClock(); } catch(e) { document.title = 'ERR:tickClock:'+e.message; return; }
   setInterval(tickClock, 1000);
-  bindTabs();
+  try { bindTabs(); } catch(e) { document.title = 'ERR:bindTabs:'+e.message; return; }
   // PRESET_CONFIGで直接起動（localStorage不要）
   bootWithPreset();
 });
@@ -745,15 +745,22 @@ function loadCfg() {
 }
 
 function bootWithPreset() {
+  document.title = 'boot:start';
   try {
+    document.title = 'boot:checking-apps';
     if (firebase.apps.length) {
       firebase.apps.forEach(a => { try { a.delete(); } catch {} });
     }
+    document.title = 'boot:init-app';
     firebase.initializeApp(PRESET_CONFIG);
+    document.title = 'boot:get-db';
     db = firebase.database();
+    document.title = 'boot:launch';
     localStorage.setItem(CFG_KEY, JSON.stringify(PRESET_CONFIG));
     launchApp();
+    document.title = '和on 勤怠管理';
   } catch(e) {
+    document.title = 'BOOT-ERR:' + e.message.substring(0,40);
     console.error('Boot error:', e);
     showScreen('screen-setup');
     toast('起動エラー。ページを再読み込みしてください。', 'error');
@@ -1205,15 +1212,130 @@ async function loadSal() {
   }));
 
   const staff = Object.entries(staffMap).filter(([,s]) => s.active !== false);
-  let totalPay = 0;
-  let rows = '';
-
+  let html = '<table class="sal-table"><thead><tr><th>氏名</th><th>時給</th><th>実働時間</th><th>給与（税前）</th></tr></thead><tbody>';
   staff.forEach(([sid, s]) => {
-    let totalMs = 0;
+    let totalMin = 0;
     dates.forEach(d => {
       const recs = attData[d]?.[sid]?.records;
       if (recs) {
         const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
         let workStart = null;
         arr.forEach(r => {
-          if (r.type=
+          if (r.type === 'in' || r.type === 'return') workStart = r.ts;
+          if ((r.type === 'out' || r.type === 'break') && workStart) {
+            totalMin += (r.ts - workStart) / 60000;
+            workStart = null;
+          }
+        });
+      }
+    });
+    totalMin = Math.floor(totalMin);
+    const h = Math.floor(totalMin / 60), min = totalMin % 60;
+    const rate = s.hourlyRate || 0;
+    const pay = Math.floor((totalMin / 60) * rate);
+    html += `<tr><td>${s.name}</td><td>${rate ? '¥'+rate.toLocaleString() : '未設定'}</td><td>${h}h${min}m</td><td>${rate ? '¥'+pay.toLocaleString() : '—'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  el('sal-tbl').innerHTML = html;
+}
+
+// ─────────────────────────────────────────
+// ADMIN — ATTENDANCE EDIT MODAL
+// ─────────────────────────────────────────
+async function openAttEdit(date, staffId) {
+  el('ae-date').textContent = date;
+  el('ae-name').textContent = staffMap[staffId]?.name || staffId;
+  el('ae-sid').value = staffId;
+  el('ae-date-val').value = date;
+  const snap = await db.ref(`attendance/${date}/${staffId}/records`).once('value');
+  const recs = snap.val() || {};
+  const arr = Object.entries(recs).sort((a,b) => a[1].ts - b[1].ts);
+  const tagMap = { in:'出勤', out:'退勤', break:'休憩', return:'戻り' };
+  const tagCls = { in:'rec-in', out:'rec-out', break:'rec-break', return:'rec-return' };
+  let html = '';
+  arr.forEach(([key, r]) => {
+    html += `<div class="ae-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span class="rec-tag ${tagCls[r.type]||'rec-out'}">${tagMap[r.type]||r.type}</span>
+      <span style="flex:1">${r.time}</span>
+      <button class="btn btn-danger btn-sm" onclick="delRec('${date}','${staffId}','${key}')">削除</button>
+    </div>`;
+  });
+  el('ae-recs').innerHTML = html || '<div style="color:var(--gray);padding:8px 0;">記録なし</div>';
+  openModal('modal-att-edit');
+}
+
+async function delRec(date, staffId, key) {
+  if (!confirm('この打刻を削除しますか？')) return;
+  await db.ref(`attendance/${date}/${staffId}/records/${key}`).remove();
+  await openAttEdit(date, staffId);
+  toast('削除しました', 'success');
+}
+
+async function addRec() {
+  const date = el('ae-date-val').value;
+  const staffId = el('ae-sid').value;
+  const type = el('ae-type').value;
+  const time = el('ae-time').value;
+  if (!time) { toast('時刻を入力してください', 'error'); return; }
+  const [hh, mm] = time.split(':').map(Number);
+  const now = new Date();
+  const base = new Date(date);
+  base.setHours(hh, mm, 0, 0);
+  await db.ref(`attendance/${date}/${staffId}/records`).push({ type, time: time+':00', ts: base.getTime() });
+  toast('追加しました', 'success');
+  await openAttEdit(date, staffId);
+}
+
+// ─────────────────────────────────────────
+// ADMIN — CONFIG (PASSWORD)
+// ─────────────────────────────────────────
+async function saveAdminPw() {
+  const newPw = el('cfg-admin-pw').value.trim();
+  if (!newPw) { toast('新しいパスワードを入力してください', 'error'); return; }
+  await db.ref('config/adminPw').set(newPw);
+  toast('オーナーパスワードを変更しました', 'success');
+  el('cfg-admin-pw').value = '';
+}
+
+async function saveManagerPw() {
+  const newPw = el('cfg-mgr-pw').value.trim();
+  if (!newPw) { toast('新しいパスワードを入力してください', 'error'); return; }
+  await db.ref('config/managerPw').set(newPw);
+  toast('店長パスワードを変更しました', 'success');
+  el('cfg-mgr-pw').value = '';
+}
+
+function resetSetup() {
+  if (!confirm('設定をリセットして初期設定画面に戻ります。よろしいですか？')) return;
+  localStorage.removeItem(CFG_KEY);
+  location.reload();
+}
+
+// ─────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────
+function openModal(id) { const m = el(id); if(m){ m.style.display='flex'; } }
+function closeModal(id) { const m = el(id); if(m){ m.style.display='none'; } }
+
+// ─────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────
+function el(id) { return document.getElementById(id); }
+function v(id) { return (el(id)?.value || '').trim(); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function toast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+</script>
+</body>
+</html>
