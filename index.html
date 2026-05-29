@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>和on 勤怠管理</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #1a2e4a;
+  --navy-light: #2d4a6b;
+  --green: #27ae60;
+  --red: #e74c3c;
+  --orange: #e67e22;
+  --bg: #f0f2f5;
+  --white: #ffffff;
+  --text: #2c3e50;
+  --gray: #95a5a6;
+  --border: #e8eaed;
+}
+
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'Yu Gothic', 'メイリオ', sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+}
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ── Header ─────────────────────────────── */
+.header {
+  background: var(--navy);
+  color: white;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header-title { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.05em; }
+.header-time { font-size: 1.3rem; font-weight: 300; letter-spacing: 0.1em; }
+.header-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  padding: 7px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.header-btn:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Notification ────────────────────────── */
+#notification {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: white;
+  padding: 11px 28px;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+#notification.show { opacity: 1; }
+#notification.success { background: var(--green); }
+#notification.error { background: var(--red); }
+
+/* ── Setup Screen ────────────────────────── */
+#screen-setup {
+  background: var(--navy);
+}
+.setup-wrap {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+.setup-hero {
+  text-align: center;
+  padding: 24px 0 20px;
+  color: white;
+}
+.setup-hero .logo { font-size: 3rem; }
+.setup-hero h1 { font-size: 1.6rem; margin-top: 8px; }
+.setup-hero p { color: rgba(255,255,255,0.65); margin-top: 6px; font-size: 0.9rem; }
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 0.95rem; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+
+.steps-list { display: flex; flex-direction: column; gap: 10px; }
+.step { display: flex; gap: 12px; align-items: flex-start; }
+.step-n {
+  width: 26px; height: 26px; flex-shrink: 0;
+  background: var(--navy); color: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+}
+.step-t { font-size: 0.88rem; line-height: 1.6; color: var(--text); }
+.step-t a { color: #2980b9; }
+.step-t strong { color: var(--navy); }
+
+.fg { margin-bottom: 13px; }
+.fg label {
+  display: block; font-size: 0.78rem;
+  font-weight: 700; color: var(--gray);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+.fg input, .fg select {
+  width: 100%; padding: 10px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.9rem;
+  font-family: inherit; color: var(--text);
+  transition: border-color 0.2s;
+  background: white;
+}
+.fg input:focus, .fg select:focus {
+  outline: none; border-color: var(--navy);
+}
+
+.btn {
+  padding: 12px 20px; border-radius: 9px; border: none;
+  cursor: pointer; font-size: 0.95rem; font-weight: 700;
+  transition: all 0.18s; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary { background: var(--navy); color: white; width: 100%; padding: 14px; font-size: 1rem; }
+.btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); }
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover { background: #229954; }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { background: #c0392b; }
+.btn-outline { background: white; border: 1.5px solid var(--navy); color: var(--navy); }
+.btn-outline:hover { background: #f0f4f8; }
+.btn-ghost { background: transparent; color: var(--gray); border: 1.5px solid var(--border); }
+.btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
+.btn-sm { padding: 6px 13px; font-size: 0.8rem; border-radius: 7px; }
+
+/* ── Staff Screen ────────────────────────── */
+.working-bar {
+  background: white;
+  padding: 8px 18px;
+  font-size: 0.82rem;
+  color: var(--gray);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.working-bar .badge {
+  background: var(--green); color: white;
+  padding: 1px 9px; border-radius: 12px;
+  font-weight: 700; font-size: 0.82rem;
+}
+.search-wrap { padding: 12px 16px 4px; }
+.search-wrap input {
+  width: 100%; padding: 10px 16px;
+  border: 1.5px solid var(--border); border-radius: 30px;
+  font-size: 0.92rem; font-family: inherit; background: white;
+  transition: border-color 0.2s;
+}
+.search-wrap input:focus { outline: none; border-color: var(--navy); }
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 12px 16px 24px;
+}
+.staff-card {
+  background: white; border-radius: 13px;
+  padding: 18px 12px 14px;
+  text-align: center; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.18s;
+  border: 2px solid transparent;
+  user-select: none;
+}
+.staff-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.staff-card:active { transform: scale(0.97); }
+.staff-card.working { border-color: var(--green); background: #f0fff6; }
+.staff-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 900; color: white;
+}
+.staff-name { font-size: 0.92rem; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+.chip {
+  font-size: 0.72rem; padding: 3px 10px;
+  border-radius: 20px; display: inline-block; font-weight: 700;
+}
+.chip-on { background: #d5f5e3; color: #1a7a40; }
+.chip-off { background: #f0f0f0; color: #999; }
+.clock-in-since { font-size: 0.72rem; color: var(--gray); margin-top: 4px; }
+
+/* ── Clock Screen ────────────────────────── */
+.clock-wrap {
+  max-width: 420px; margin: 0 auto;
+  padding: 28px 20px 32px;
+  text-align: center;
+}
+.clock-avatar-lg {
+  width: 80px; height: 80px; border-radius: 50%;
+  margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem; font-weight: 900; color: white;
+}
+.clock-time-big { font-size: 3.2rem; font-weight: 300; color: var(--navy); letter-spacing: 0.05em; }
+.clock-date-sub { color: var(--gray); font-size: 0.9rem; margin: 4px 0 24px; }
+.clock-status-box {
+  background: white; border-radius: 12px;
+  padding: 16px 20px; margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+.clock-status-label { font-size: 0.78rem; color: var(--gray); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; }
+.clock-status-val { font-size: 1.2rem; font-weight: 800; }
+.clock-btns { display: flex; gap: 10px; margin-bottom: 20px; }
+.clock-btns .btn {
+  flex: 1; padding: 17px;
+  font-size: 1.05rem; border-radius: 12px;
+  border: none;
+}
+.btn-in { background: var(--green); color: white; }
+.btn-in:hover { background: #229954; }
+.btn-out { background: var(--red); color: white; }
+.btn-out:hover { background: #c0392b; }
+.btn-break { background: #f39c12; color: white; }
+.btn-break:hover { background: #e67e22; }
+.btn-return { background: #3498db; color: white; }
+.btn-return:hover { background: #2980b9; }
+.btn-in:disabled, .btn-out:disabled,
+.btn-break:disabled, .btn-return:disabled { opacity: 0.35; cursor: default; transform: none !important; }
+.chip-break { background: #fef3cd; color: #b7650a; }
+
+.records-box {
+  background: white; border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  text-align: left;
+}
+.records-box h4 { font-size: 0.8rem; color: var(--gray); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+.rec-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid #f3f3f3;
+  font-size: 0.88rem;
+}
+.rec-row:last-child { border-bottom: none; }
+.rec-tag { font-size: 0.72rem; padding: 2px 9px; border-radius: 15px; font-weight: 700; }
+.rec-in { background: #d5f5e3; color: #1a7a40; }
+.rec-out { background: #fde8e8; color: #a93226; }
+.rec-break { background: #fef3cd; color: #b7650a; }
+.rec-return { background: #d6eaf8; color: #1a5276; }
+.rec-time { font-weight: 800; }
+.rec-dur { color: var(--gray); font-size: 0.8rem; margin-left: auto; }
+.total-row {
+  display: flex; justify-content: space-between;
+  padding: 12px 0 0; margin-top: 4px;
+  border-top: 2px solid var(--border);
+  font-weight: 700; font-size: 0.9rem;
+}
+.total-row span:last-child { color: var(--navy); font-size: 1rem; }
+
+/* ── Admin Login ────────────────────────── */
+.login-wrap {
+  max-width: 340px; margin: 80px auto;
+  background: white; border-radius: 16px;
+  padding: 36px 32px; text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+.login-wrap .ico { font-size: 2.6rem; margin-bottom: 8px; }
+.login-wrap h2 { color: var(--navy); margin-bottom: 22px; font-size: 1.2rem; }
+
+/* ── Admin Screen ────────────────────────── */
+.admin-wrap { max-width: 920px; margin: 0 auto; padding: 18px 16px 40px; }
+
+.tabs {
+  display: flex; gap: 4px;
+  background: white; padding: 5px; border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  margin-bottom: 20px; overflow-x: auto;
+}
+.tab {
+  flex: 1; min-width: 0;
+  padding: 10px 8px; text-align: center;
+  border-radius: 8px; cursor: pointer;
+  font-size: 0.82rem; font-weight: 700; color: var(--gray);
+  transition: all 0.18s; white-space: nowrap;
+}
+.tab.active { background: var(--navy); color: white; }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.section-card {
+  background: white; border-radius: 14px;
+  padding: 20px 22px; margin-bottom: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+.section-card h2 {
+  font-size: 1rem; color: var(--navy);
+  margin-bottom: 16px; display: flex;
+  align-items: center; justify-content: space-between;
+}
+
+.staff-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1.5px solid var(--border);
+  border-radius: 9px; margin-bottom: 8px;
+}
+.staff-row-ava {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 900; flex-shrink: 0; font-size: 0.9rem;
+}
+.staff-row-name { flex: 1; font-weight: 700; font-size: 0.95rem; }
+.staff-row-rate { color: var(--gray); font-size: 0.85rem; white-space: nowrap; }
+.staff-row-acts { display: flex; gap: 6px; }
+
+/* Month selector */
+.month-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.month-row select {
+  padding: 8px 13px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.9rem; font-family: inherit;
+  cursor: pointer;
+}
+
+/* Attendance table */
+.att-scroll { overflow-x: auto; }
+.att-table { border-collapse: collapse; width: 100%; font-size: 0.8rem; min-width: 600px; }
+.att-table th, .att-table td {
+  padding: 7px 8px; border: 1px solid var(--border);
+  text-align: center; white-space: nowrap;
+}
+.att-table thead th { background: var(--navy); color: white; font-weight: 700; }
+.att-table thead th.name-col { text-align: left; padding-left: 12px; }
+.att-table tbody td.name-col { text-align: left; padding-left: 12px; font-weight: 700; }
+.att-table tbody tr:nth-child(even) td { background: #f9fafb; }
+.att-in { color: #1a7a40; font-weight: 700; display: block; }
+.att-out { color: #a93226; font-weight: 700; display: block; }
+.att-warn { color: var(--orange); font-size: 0.72rem; }
+.att-total { font-weight: 800; color: var(--navy); }
+.sun { color: var(--red) !important; }
+.sat { color: #2980b9 !important; }
+
+/* Salary table */
+.sal-table { width: 100%; border-collapse: collapse; }
+.sal-table th, .sal-table td {
+  padding: 11px 13px; text-align: left;
+  border-bottom: 1px solid var(--border); font-size: 0.88rem;
+}
+.sal-table th { color: var(--gray); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; background: #f8f9fa; }
+.sal-table td.money { font-weight: 800; color: var(--navy); font-size: 1rem; }
+.sal-table tfoot td { font-weight: 800; font-size: 1rem; background: var(--navy); color: white; padding: 13px; }
+.rate-input {
+  width: 82px; padding: 5px 8px;
+  border: 1.5px solid var(--border); border-radius: 7px;
+  font-size: 0.9rem; font-family: inherit;
+  transition: border-color 0.2s;
+}
+.rate-input:focus { outline: none; border-color: var(--navy); }
+
+/* Modal */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none; align-items: center;
+  justify-content: center; z-index: 800; padding: 20px;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: white; border-radius: 16px;
+  padding: 26px 26px 22px; width: 100%;
+  max-width: 400px;
+}
+.modal h3 { font-size: 1.05rem; color: var(--navy); margin-bottom: 18px; }
+.modal-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* Avatar colors */
+.c0{background:#3498db} .c1{background:#e74c3c} .c2{background:#2ecc71}
+.c3{background:#f39c12} .c4{background:#9b59b6} .c5{background:#1abc9c}
+.c6{background:#e67e22} .c7{background:#34495e} .c8{background:#e91e63}
+.c9{background:#00bcd4} .c10{background:#8bc34a} .c11{background:#ff5722}
+.c12{background:#607d8b} .c13{background:#795548} .c14{background:#009688}
+.c15{background:#673ab7}
+
+/* Loading spinner */
+.loading { text-align: center; padding: 30px; color: var(--gray); font-size: 0.9rem; }
+
+@media (max-width: 480px) {
+  .staff-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 12px 20px; }
+  .staff-card { padding: 13px 8px 11px; }
+  .staff-avatar { width: 42px; height: 42px; font-size: 1.15rem; }
+  .staff-name { font-size: 0.82rem; }
+  .clock-time-big { font-size: 2.6rem; }
+  .tabs { overflow-x: auto; }
+  .tab { font-size: 0.78rem; padding: 9px 6px; min-width: 68px; }
+  .admin-wrap { padding: 12px; }
+  .section-card { padding: 16px 14px; }
+}
+
+/* ── 権限管理 ── */
+#screen-admin.manager-mode .owner-only { display:none !important; }
+.role-badge { font-size:0.72rem; padding:2px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; font-weight:600; }
+.role-badge.owner { background:#fff3cd; color:#856404; }
+.role-badge.manager { background:#d1ecf1; color:#0c5460; }
+
+/* ── 打刻修正モーダル ── */
+.mae-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); }
+.mae-row:last-child { border-bottom:none; }
+.mae-type { flex:0 0 72px; padding:5px 4px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; background:var(--bg); }
+.mae-time { flex:0 0 90px; padding:5px 6px; border:1px solid var(--border); border-radius:6px; font-size:0.92rem; }
+.mae-add-row { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:2px dashed var(--border); }
+.att-table td.clickable { cursor:pointer; transition:background 0.15s; }
+.att-table td.clickable:hover { background:#e8f4fd; }
+</style>
+</head>
+<body>
+
+<div id="notification"></div>
+
+<!-- ══════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════ -->
+<div id="screen-setup" class="screen active">
+<div class="setup-wrap">
+  <div class="setup-hero">
+    <div class="logo">🏪</div>
+    <h1>和on 勤怠管理</h1>
+    <p>初回設定 — Firebase（無料）を接続します</p>
+  </div>
+
+  <div class="card">
+    <h2>📋 設定手順（約10分）</h2>
+    <div class="steps-list">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-t"><strong><a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a></strong> を開く（Googleアカウントでログイン）</div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-t">「プロジェクトを追加」→ 名前を入力（例：waaon-kintai）→ Googleアナリティクスは不要 → 「プロジェクトを作成」</div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-t">左メニュー「構築」→「Realtime Database」→「データベースを作成」→ ロケーション任意→ <strong>「テストモードで開始」</strong>を選択→「有効にする」</div>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <div class="step-t">画面上部の歯車アイコン⚙️ →「プロジェクトの設定」→「全般」タブ → 下へスクロール →「アプリを追加」→「ウェブ（&lt;/&gt;）」→ アプリ名を入力 → <strong>firebaseConfig の内容をコピー</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-n">5</div>
+        <div class="step-t">下のフォームに貼り付けて「接続する」をクリック ✅</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔧 Firebase 設定値</h2>
+    <div class="fg"><label>API Key</label><input id="s-apiKey" type="text" placeholder="AIzaSy..."></div>
+    <div class="fg"><label>Auth Domain</label><input id="s-authDomain" type="text" placeholder="your-project.firebaseapp.com"></div>
+    <div class="fg"><label>Database URL</label><input id="s-databaseURL" type="text" placeholder="https://your-project-default-rtdb.firebaseio.com"></div>
+    <div class="fg"><label>Project ID</label><input id="s-projectId" type="text" placeholder="your-project"></div>
+    <div class="fg"><label>Storage Bucket</label><input id="s-storageBucket" type="text" placeholder="your-project.appspot.com"></div>
+    <div class="fg"><label>Messaging Sender ID</label><input id="s-messagingSenderId" type="text" placeholder="123456789"></div>
+    <div class="fg"><label>App ID</label><input id="s-appId" type="text" placeholder="1:123456789:web:abc..."></div>
+    <div class="fg">
+      <label>管理者パスワード（初回設定）</label>
+      <input id="s-adminPw" type="password" placeholder="6文字以上推奨">
+    </div>
+    <button class="btn btn-primary" onclick="setupInit()">接続する →</button>
+    <p style="font-size:0.78rem;color:#aaa;text-align:center;margin-top:10px;">設定値はこのブラウザに保存されます（1回のみ必要）</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     STAFF SCREEN
+══════════════════════════════════════ -->
+<div id="screen-staff" class="screen">
+  <div class="header">
+    <div class="header-title">🏪 和on</div>
+    <div class="header-time" id="hdr-time">--:--</div>
+    <button class="header-btn" onclick="goAdmin()">管理者 ›</button>
+  </div>
+  <div class="working-bar">
+    出勤中: <span class="badge" id="working-count">0</span>人
+  </div>
+  <div class="search-wrap">
+    <input type="text" id="staff-search" placeholder="🔍 名前で検索..." oninput="filterStaff(this.value)">
+  </div>
+  <div class="staff-grid" id="staff-grid">
+    <div class="loading" style="grid-column:1/-1">読み込み中...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CLOCK SCREEN
+══════════════════════════════════════ -->
+<div id="screen-clock" class="screen">
+  <div class="header">
+    <button class="header-btn" onclick="showScreen('screen-staff')">← 戻る</button>
+    <div class="header-title" id="clock-hdr-name"></div>
+    <div style="width:70px"></div>
+  </div>
+  <div class="clock-wrap">
+    <div class="clock-avatar-lg" id="clock-ava"></div>
+    <div class="clock-time-big" id="clock-ts">--:--:--</div>
+    <div class="clock-date-sub" id="clock-ds"></div>
+    <div class="clock-status-box">
+      <div class="clock-status-label">現在の状態</div>
+      <div class="clock-status-val" id="clock-sv">確認中...</div>
+    </div>
+    <div class="clock-btns">
+      <button class="btn btn-in" id="btn-in" onclick="doClock('in')">🟢 出勤</button>
+      <button class="btn btn-break" id="btn-break" onclick="doClock('break')">🟡 休憩</button>
+      <button class="btn btn-return" id="btn-return" onclick="doClock('return')">🔵 戻り</button>
+      <button class="btn btn-out" id="btn-out" onclick="doClock('out')">🔴 退勤</button>
+    </div>
+    <div class="records-box">
+      <h4>本日の打刻</h4>
+      <div id="rec-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN LOGIN
+══════════════════════════════════════ -->
+<div id="screen-admin-login" class="screen">
+  <div class="login-wrap">
+    <div class="ico">🔐</div>
+    <h2>管理者ログイン</h2>
+    <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;">オーナーまたは店長のパスワードを入力してください</p>
+    <div class="fg" style="text-align:left;">
+      <label>パスワード</label>
+      <input type="password" id="admin-pw-input" placeholder="パスワード"
+        onkeydown="if(event.key==='Enter')adminLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="adminLogin()">ログイン</button>
+    <br><br>
+    <button class="btn btn-ghost btn-sm" onclick="showScreen('screen-staff')">← 戻る</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN SCREEN
+══════════════════════════════════════ -->
+<div id="screen-admin" class="screen">
+  <div class="header">
+    <button class="header-btn" onclick="showScreen('screen-staff')">← 戻る</button>
+    <div class="header-title">管理者画面 <span id="admin-role-badge" class="role-badge"></span></div>
+    <button class="header-btn" onclick="adminLogout()">ログアウト</button>
+  </div>
+  <div class="admin-wrap">
+    <div class="tabs" id="admin-tabs">
+      <div class="tab active" data-pane="pane-staff">👥 スタッフ</div>
+      <div class="tab" data-pane="pane-att">📅 勤怠記録</div>
+      <div class="tab owner-only" data-pane="pane-sal">💴 給与計算</div>
+      <div class="tab owner-only" data-pane="pane-cfg">⚙️ 設定</div>
+    </div>
+
+    <!-- ── スタッフ管理 ── -->
+    <div class="tab-pane active" id="pane-staff">
+      <div class="section-card">
+        <h2>スタッフ一覧
+          <button class="btn btn-primary btn-sm" onclick="openStaffModal()">＋ 追加</button>
+        </h2>
+        <div id="staff-admin-list"><div class="loading">読み込み中...</div></div>
+      </div>
+    </div>
+
+    <!-- ── 勤怠記録 ── -->
+    <div class="tab-pane" id="pane-att">
+      <div class="section-card">
+        <h2>勤怠記録</h2>
+        <div class="month-row">
+          <select id="att-month" onchange="loadAtt()"></select>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 CSV出力</button>
+        </div>
+        <div class="att-scroll" id="att-grid"><div class="loading">月を選択してください</div></div>
+      </div>
+    </div>
+
+    <!-- ── 給与計算 ── -->
+    <div class="tab-pane owner-only" id="pane-sal">
+      <div class="section-card">
+        <h2>給与計算</h2>
+        <div class="month-row">
+          <select id="sal-month" onchange="loadSal()"></select>
+        </div>
+        <p style="font-size:0.82rem;color:var(--gray);margin-bottom:14px;">時給欄を直接入力すると即座に反映されます。変更はスタッフ情報に保存されます。</p>
+        <div id="sal-tbl"><div class="loading">月を選択してください</div></div>
+      </div>
+    </div>
+
+    <!-- ── 設定 ── -->
+    <div class="tab-pane owner-only" id="pane-cfg">
+      <div class="section-card">
+        <h2>🔑 オーナーパスワード変更</h2>
+        <div class="fg"><label>新しいパスワード</label><input type="password" id="new-pw" placeholder="新しいパスワード"></div>
+        <button class="btn btn-primary" onclick="changePw()">変更する</button>
+      </div>
+      <div class="section-card">
+        <h2>🏪 店長パスワード変更</h2>
+        <p style="color:var(--gray);font-size:0.88rem;margin-bottom:12px;">店長は勤怠記録の閲覧・打刻修正ができます。時給・給与は見えません。</p>
+        <div class="fg"><label>新しい店長パスワード</label><input type="password" id="new-manager-pw" placeholder="店長用パスワード"></div>
+        <button class="btn btn-primary" onclick="changeManagerPw()">変更する</button>
+      </div>
+      <div class="section-card">
+        <h2>Firebaseを再設定</h2>
+        <p style="color:var(--gray);font-size:0.88rem;margin-bottom:12px;">設定をリセットして初期設定画面に戻ります。</p>
+        <button class="btn btn-danger" onclick="resetSetup()">設定をリセット</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+<div class="overlay" id="modal-staff-wrap">
+  <div class="modal">
+    <h3 id="modal-staff-ttl">スタッフを追加</h3>
+    <input type="hidden" id="ms-id">
+    <div class="fg"><label>名前</label><input type="text" id="ms-name" placeholder="例：田中 太郎"></div>
+    <div class="fg owner-only"><label>時給（円）</label><input type="number" id="ms-rate" placeholder="例：1100" min="0" step="10"></div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-staff-wrap')">キャンセル</button>
+      <button class="btn btn-primary btn-sm" onclick="saveStaff()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 打刻修正モーダル -->
+<div class="overlay" id="modal-att-edit-wrap">
+  <div class="modal" style="max-width:480px">
+    <h3 id="mae-title">打刻修正</h3>
+    <div id="mae-records" style="margin-top:12px;max-height:340px;overflow-y:auto;"></div>
+    <div class="mae-add-row">
+      <select id="mae-new-type" class="mae-type">
+        <option value="in">出勤</option>
+        <option value="break">休憩</option>
+        <option value="return">戻り</option>
+        <option value="out">退勤</option>
+      </select>
+      <input id="mae-new-time" class="mae-time" type="time">
+      <button class="btn btn-primary btn-sm" onclick="addAttRecord()">＋ 追加</button>
+    </div>
+    <div class="modal-acts" style="margin-top:16px">
+      <button class="btn btn-ghost btn-sm" onclick="closeAttEdit()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ─────────────────────────────────────────
+// STATE & CONSTANTS
+// ─────────────────────────────────────────
+const DAYS = ['日','月','火','水','木','金','土'];
+let db = null;
+let staffMap = {};
+let todayRec = {};
+let selStaffId = null;
+let adminIn = false;
+let managerIn = false;
+let searchQ = '';
+const CFG_KEY = 'waaon_fb_cfg_v2';
+
+// ─────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────
+// Firebase config (自動設定済み)
+const PRESET_CONFIG = {
+  apiKey: "AIzaSyDj_tkmKhDDr-UEnwBR7KIqOisWCI6r2UM",
+  authDomain: "waon-onigiri-kintai.firebaseapp.com",
+  databaseURL: "https://waon-onigiri-kintai-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "waon-onigiri-kintai",
+  storageBucket: "waon-onigiri-kintai.firebasestorage.app",
+  messagingSenderId: "163860748811",
+  appId: "1:163860748811:web:f6460b63136e6caad8c50e"
+};
+
+// 初期スタッフデータ
+const INITIAL_STAFF = [
+  { name: '里山',        hourlyRate: 0, colorIndex: 0  },
+  { name: '平野 開陽',   hourlyRate: 0, colorIndex: 1  },
+  { name: '高岡 大地',   hourlyRate: 0, colorIndex: 2  },
+  { name: '菊井 祐高',   hourlyRate: 0, colorIndex: 3  },
+  { name: '川合 一嗣',   hourlyRate: 0, colorIndex: 4  },
+  { name: '小西 未空',   hourlyRate: 0, colorIndex: 5  },
+  { name: '岸田 湊',     hourlyRate: 0, colorIndex: 6  },
+  { name: '岡田 雄翔',   hourlyRate: 0, colorIndex: 7  },
+  { name: '木下 紗都己', hourlyRate: 0, colorIndex: 8  },
+  { name: '小笠原 穂香', hourlyRate: 0, colorIndex: 9  },
+  { name: '辻島 さくら', hourlyRate: 0, colorIndex: 10 },
+  { name: '津田 帆登',   hourlyRate: 0, colorIndex: 11 },
+  { name: '永見 颯太郎', hourlyRate: 0, colorIndex: 12 },
+  { name: '内田 悠輝',   hourlyRate: 0, colorIndex: 13 },
+  { name: '安井 優月',   hourlyRate: 0, colorIndex: 14 },
+  { name: '川原田 智也', hourlyRate: 0, colorIndex: 15 },
+  { name: '丸野 晴哉',   hourlyRate: 0, colorIndex: 0  },
+  { name: '荒井 零生',   hourlyRate: 0, colorIndex: 1  },
+  { name: '萩瀬 直太郎', hourlyRate: 0, colorIndex: 2  },
+  { name: '後藤 夕奈',   hourlyRate: 0, colorIndex: 3  },
+];
+
+window.addEventListener('load', () => {
+  // プリセット設定があれば自動で保存して接続
+  if (!localStorage.getItem(CFG_KEY)) {
+    localStorage.setItem(CFG_KEY, JSON.stringify(PRESET_CONFIG));
+  }
+  const cfg = loadCfg();
+  cfg ? tryConnect(cfg) : showScreen('screen-setup');
+  tickClock();
+  setInterval(tickClock, 1000);
+  bindTabs();
+});
+
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)); } catch { return null; }
+}
+
+async function tryConnect(cfg) {
+  try {
+    if (firebase.apps.length) await Promise.all(firebase.apps.map(a => a.delete()));
+    firebase.initializeApp(cfg);
+    db = firebase.database();
+    await db.ref('.info/connected').once('value');
+    launchApp();
+  } catch(e) {
+    console.error(e);
+    localStorage.removeItem(CFG_KEY);
+    showScreen('screen-setup');
+    toast('Firebase接続エラー。再設定してください。', 'error');
+  }
+}
+
+async function seedStaffIfEmpty() {
+  const snap = await db.ref('staff').once('value');
+  const existing = snap.val() || {};
+  const active = Object.values(existing).filter(s => s.active !== false);
+  if (active.length === 0) {
+    const writes = {};
+    INITIAL_STAFF.forEach((s, i) => {
+      const key = db.ref('staff').push().key;
+      writes[`staff/${key}`] = { ...s, active: true, order: i };
+    });
+    await db.ref().update(writes);
+    toast('スタッフ20名を自動登録しました！', 'success');
+  }
+}
+
+async function initManagerPwIfEmpty() {
+  const snap = await db.ref('config/managerPw').once('value');
+  if (!snap.val()) await db.ref('config/managerPw').set('manager123');
+}
+
+function launchApp() {
+  showScreen('screen-staff');
+  seedStaffIfEmpty();
+  initManagerPwIfEmpty();
+  db.ref('staff').on('value', snap => {
+    staffMap = snap.val() || {};
+    renderGrid();
+    renderAdminStaff();
+  });
+  db.ref(`attendance/${today()}`).on('value', snap => {
+    todayRec = snap.val() || {};
+    renderGrid();
+    if (selStaffId) renderClockScreen();
+  });
+}
+
+// ─────────────────────────────────────────
+// SETUP
+// ─────────────────────────────────────────
+async function setupInit() {
+  const cfg = {
+    apiKey: v('s-apiKey'), authDomain: v('s-authDomain'),
+    databaseURL: v('s-databaseURL'), projectId: v('s-projectId'),
+    storageBucket: v('s-storageBucket'),
+    messagingSenderId: v('s-messagingSenderId'), appId: v('s-appId')
+  };
+  const pw = v('s-adminPw') || 'admin123';
+  if (!cfg.apiKey || !cfg.databaseURL) { toast('API KeyとDatabase URLは必須です', 'error'); return; }
+  try {
+    if (firebase.apps.length) await Promise.all(firebase.apps.map(a => a.delete()));
+    firebase.initializeApp(cfg);
+    db = firebase.database();
+    await db.ref('config/adminPw').set(pw);
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    toast('接続しました！', 'success');
+    launchApp();
+  } catch(e) {
+    console.error(e);
+    toast('接続失敗。設定値を確認してください。', 'error');
+    db = null;
+    if (firebase.apps.length) firebase.apps.forEach(a => { try { a.delete(); } catch{} });
+  }
+}
+
+// ─────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goAdmin() {
+  if (adminIn || managerIn) { showScreen('screen-admin'); loadAdminData(); }
+  else { showScreen('screen-admin-login'); document.getElementById('admin-pw-input').value = ''; setTimeout(()=>document.getElementById('admin-pw-input').focus(),120); }
+}
+
+// ─────────────────────────────────────────
+// CLOCK DISPLAY
+// ─────────────────────────────────────────
+function tickClock() {
+  const n = new Date();
+  const ts = n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const tm = n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+  el('hdr-time').textContent = tm;
+  el('clock-ts').textContent = ts;
+  el('clock-ds').textContent = n.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}) + ` (${DAYS[n.getDay()]})`;
+  if (selStaffId && isWorking(selStaffId)) updateTotalDisplay();
+}
+
+// ─────────────────────────────────────────
+// STAFF GRID
+// ─────────────────────────────────────────
+function filterStaff(q) { searchQ = q; renderGrid(); }
+
+function renderGrid() {
+  const grid = el('staff-grid');
+  if (!grid) return;
+  const list = Object.entries(staffMap)
+    .filter(([,s]) => s.active !== false)
+    .filter(([,s]) => !searchQ || s.name.includes(searchQ))
+    .sort((a,b) => (a[1].order||0) - (b[1].order||0));
+
+  const workN = list.filter(([id]) => getStatus(id) === 'working').length;
+  el('working-count').textContent = workN;
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="loading" style="grid-column:1/-1;">スタッフが登録されていません<br><small style="color:#bbb">管理者画面から追加してください</small></div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(([id, s], i) => {
+    const ci = s.colorIndex ?? (i % 16);
+    const st = getStatus(id);
+    const since = st !== 'off' ? getSince(id) : '';
+    const chipCls = st === 'working' ? 'chip-on' : st === 'break' ? 'chip-break' : 'chip-off';
+    const chipTxt = st === 'working' ? '✓ 出勤中' : st === 'break' ? '☕ 休憩中' : '退勤';
+    return `<div class="staff-card ${st==='working'?'working':''}" onclick="selStaff('${id}')">
+      <div class="staff-avatar c${ci}">${s.name.charAt(0)}</div>
+      <div class="staff-name">${s.name}</div>
+      <span class="chip ${chipCls}">${chipTxt}</span>
+      ${since ? `<div class="clock-in-since">${since}〜</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function getStatus(id) {
+  const recs = todayRec[id]?.records;
+  if (!recs) return 'off';
+  const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
+  if (!arr.length) return 'off';
+  const last = arr[arr.length-1].type;
+  if (last === 'in' || last === 'return') return 'working';
+  if (last === 'break') return 'break';
+  return 'off';
+}
+function isWorking(id) { return getStatus(id) === 'working'; }
+
+function getSince(id) {
+  const recs = todayRec[id]?.records;
+  if (!recs) return '';
+  const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
+  const lastIn = [...arr].reverse().find(r => r.type === 'in');
+  return lastIn ? lastIn.time.substring(0,5) : '';
+}
+
+// ─────────────────────────────────────────
+// CLOCK SCREEN
+// ─────────────────────────────────────────
+function selStaff(id) {
+  selStaffId = id;
+  const s = staffMap[id]; if (!s) return;
+  const ci = s.colorIndex ?? 0;
+  el('clock-hdr-name').textContent = s.name;
+  el('clock-ava').className = `clock-avatar-lg c${ci}`;
+  el('clock-ava').textContent = s.name.charAt(0);
+  showScreen('screen-clock');
+  renderClockScreen();
+}
+
+function renderClockScreen() {
+  const st = getStatus(selStaffId);
+  const labels = { working: '🟢 出勤中', break: '☕ 休憩中', off: '⚫ 退勤中' };
+  const colors = { working: 'var(--green)', break: '#f39c12', off: 'var(--text)' };
+  el('clock-sv').textContent = labels[st];
+  el('clock-sv').style.color = colors[st];
+  el('btn-in').disabled    = st !== 'off';
+  el('btn-break').disabled  = st !== 'working';
+  el('btn-return').disabled = st !== 'break';
+  el('btn-out').disabled   = st === 'off';
+  renderRecords();
+}
+
+function renderRecords() {
+  const recs = todayRec[selStaffId]?.records;
+  const list = el('rec-list');
+  if (!recs || !Object.keys(recs).length) {
+    list.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;padding:8px 0;">まだ打刻がありません</div>';
+    return;
+  }
+  const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
+  const tagMap = { in:'出勤', out:'退勤', break:'休憩', return:'戻り' };
+  const tagCls = { in:'rec-in', out:'rec-out', break:'rec-break', return:'rec-return' };
+  let html = ''; let totalMs = 0; let workStart = null;
+  arr.forEach(r => {
+    if (r.type === 'in' || r.type === 'return') workStart = r.ts;
+    if ((r.type === 'break' || r.type === 'out') && workStart) {
+      totalMs += r.ts - workStart; workStart = null;
+    }
+    html += `<div class="rec-row">
+      <span class="rec-tag ${tagCls[r.type]||'rec-out'}">${tagMap[r.type]||r.type}</span>
+      <span class="rec-time">${r.time}</span>
+    </div>`;
+  });
+  if (workStart) totalMs += Date.now() - workStart;
+  const h = Math.floor(totalMs/3600000), m = Math.floor((totalMs%3600000)/60000);
+  html += `<div class="total-row"><span>実働時間（休憩除く）</span><span>${h}時間${m}分</span></div>`;
+  list.innerHTML = html;
+}
+
+function updateTotalDisplay() { renderRecords(); }
+
+async function doClock(type) {
+  if (!selStaffId || !db) return;
+  const n = new Date();
+  const t = n.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const labels = { in:'出勤', out:'退勤', break:'休憩', return:'戻り' };
+  try {
+    await db.ref(`attendance/${today()}/${selStaffId}/records`).push({ type, time: t, ts: n.getTime() });
+    toast(`${staffMap[selStaffId].name} の${labels[type]}を記録しました（${t}）`, 'success');
+  } catch(e) { toast('記録に失敗しました', 'error'); }
+}
+
+// ─────────────────────────────────────────
+// ADMIN AUTH
+// ─────────────────────────────────────────
+async function adminLogin() {
+  const pw = el('admin-pw-input').value;
+  const snap = await db.ref('config').once('value');
+  const cfg = snap.val() || {};
+  const ownerPw = cfg.adminPw || 'admin123';
+  const mgrPw   = cfg.managerPw || 'manager123';
+  if (pw === ownerPw) {
+    adminIn = true; managerIn = true;
+    showScreen('screen-admin');
+    loadAdminData();
+    updateAdminView();
+  } else if (pw === mgrPw) {
+    adminIn = false; managerIn = true;
+    showScreen('screen-admin');
+    loadAdminData();
+    updateAdminView();
+  } else { toast('パスワードが違います', 'error'); }
+}
+
+function adminLogout() { adminIn = false; managerIn = false; showScreen('screen-staff'); }
+
+function updateAdminView() {
+  const scr = el('screen-admin');
+  if (adminIn) {
+    scr.classList.remove('manager-mode');
+    el('admin-role-badge').textContent = 'オーナー';
+    el('admin-role-badge').className = 'role-badge owner';
+  } else {
+    scr.classList.add('manager-mode');
+    el('admin-role-badge').textContent = '店長';
+    el('admin-role-badge').className = 'role-badge manager';
+    // 給与タブが表示中なら勤怠記録タブへ強制切替
+    if (el('pane-sal').classList.contains('active') || el('pane-cfg').classList.contains('active')) {
+      document.querySelector('.tab[data-pane="pane-att"]').click();
+    }
+  }
+}
+
+// ─────────────────────────────────────────
+// ADMIN — TABS
+// ─────────────────────────────────────────
+function bindTabs() {
+  document.querySelectorAll('.tab[data-pane]').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab[data-pane]').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      el(t.dataset.pane).classList.add('active');
+    });
+  });
+}
+
+function loadAdminData() {
+  populateMonthSels();
+  renderAdminStaff();
+  loadAtt();
+  loadSal();
+}
+
+// ─────────────────────────────────────────
+// ADMIN — STAFF MANAGEMENT
+// ─────────────────────────────────────────
+function renderAdminStaff() {
+  const wrap = el('staff-admin-list'); if (!wrap) return;
+  const items = Object.entries(staffMap).filter(([,s]) => s.active !== false);
+  if (!items.length) { wrap.innerHTML = '<div class="loading">スタッフが登録されていません</div>'; return; }
+  wrap.innerHTML = items.map(([id, s], i) => {
+    const ci = s.colorIndex ?? (i % 16);
+    const rateHtml = adminIn ? `<div class="staff-row-rate">¥${(s.hourlyRate||0).toLocaleString()}/時</div>` : '';
+    return `<div class="staff-row">
+      <div class="staff-row-ava c${ci}">${s.name.charAt(0)}</div>
+      <div class="staff-row-name">${s.name}</div>
+      ${rateHtml}
+      <div class="staff-row-acts">
+        <button class="btn btn-outline btn-sm" onclick="openStaffModal('${id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delStaff('${id}','${s.name}')">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openStaffModal(id) {
+  el('ms-id').value = id || '';
+  el('modal-staff-ttl').textContent = id ? 'スタッフを編集' : 'スタッフを追加';
+  el('ms-name').value = id ? staffMap[id]?.name || '' : '';
+  el('ms-rate').value = id ? staffMap[id]?.hourlyRate || '' : '';
+  openModal('modal-staff-wrap');
+  setTimeout(() => el('ms-name').focus(), 100);
+}
+
+async function saveStaff() {
+  const id = el('ms-id').value;
+  const name = el('ms-name').value.trim();
+  const rate = parseInt(el('ms-rate').value) || 0;
+  if (!name) { toast('名前を入力してください', 'error'); return; }
+  const ci = id ? (staffMap[id]?.colorIndex ?? 0) : (Object.keys(staffMap).length % 16);
+  try {
+    if (id) await db.ref(`staff/${id}`).update({ name, hourlyRate: rate });
+    else await db.ref('staff').push({ name, hourlyRate: rate, active: true, colorIndex: ci });
+    closeModal('modal-staff-wrap');
+    toast('保存しました', 'success');
+  } catch(e) { toast('保存に失敗しました', 'error'); }
+}
+
+async function delStaff(id, name) {
+  if (!confirm(`「${name}」を削除しますか？過去の勤怠データは残ります。`)) return;
+  await db.ref(`staff/${id}`).update({ active: false });
+  toast(`${name} を削除しました`, 'success');
+}
+
+// ─────────────────────────────────────────
+// ADMIN — MONTH SELECTORS
+// ─────────────────────────────────────────
+function populateMonthSels() {
+  const now = new Date();
+  let opts = '';
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+    opts += `<option value="${val}">${d.getFullYear()}年${d.getMonth()+1}月</option>`;
+  }
+  el('att-month').innerHTML = opts;
+  el('sal-month').innerHTML = opts;
+}
+
+// ─────────────────────────────────────────
+// ADMIN — ATTENDANCE VIEW
+// ─────────────────────────────────────────
+async function loadAtt() {
+  const month = el('att-month')?.value; if (!month || !db) return;
+  const [y, m] = month.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  el('att-grid').innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const dates = Array.from({length: days}, (_, i) => `${month}-${pad(i+1)}`);
+  const attData = {};
+  await Promise.all(dates.map(async d => {
+    const s = await db.ref(`attendance/${d}`).once('value');
+    attData[d] = s.val() || {};
+  }));
+
+  const staff = Object.entries(staffMap).filter(([,s]) => s.active !== false);
+
+  // 日計用の集計オブジェクト
+  const dayTotalsMin = {};
+  dates.forEach(d => { dayTotalsMin[d] = 0; });
+
+  let html = '<table class="att-table"><thead><tr><th class="name-col">氏名</th>';
+  dates.forEach(d => {
+    const day = new Date(d).getDay(), dn = parseInt(d.split('-')[2]);
+    const cls = day===0?'sun':day===6?'sat':'';
+    html += `<th class="${cls}">${dn}<br>${DAYS[day]}</th>`;
+  });
+  html += '<th>合計</th></tr></thead><tbody>';
+
+  staff.forEach(([sid, s]) => {
+    html += `<tr><td class="name-col">${s.name}</td>`;
+    let totalMin = 0;
+    dates.forEach(d => {
+      const recs = attData[d]?.[sid]?.records;
+      if (recs) {
+        const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
+        let dayMs = 0, workStart = null;
+        arr.forEach(r => {
+          if (r.type==='in' || r.type==='return') workStart = r.ts;
+          if ((r.type==='out' || r.type==='break') && workStart) { dayMs += r.ts - workStart; workStart = null; }
+        });
+        const dayMin = Math.floor(dayMs/60000);
+        totalMin += dayMin;
+        dayTotalsMin[d] += dayMin;
+        const firstIn = arr.find(r=>r.type==='in');
+        const lastOut = [...arr].reverse().find(r=>r.type==='out');
+        const warn = firstIn && !lastOut ? '<span class="att-warn">未退勤</span>' : '';
+        html += `<td class="clickable" onclick="openAttEdit('${d}','${sid}')" title="クリックして打刻を修正">
+          ${firstIn ? `<span class="att-in">${firstIn.time.substring(0,5)}</span>` : ''}
+          ${lastOut ? `<span class="att-out">${lastOut.time.substring(0,5)}</span>` : warn}
+        </td>`;
+      } else { html += `<td class="clickable" onclick="openAttEdit('${d}','${sid}')" title="クリックして打刻を追加"></td>`; }
+    });
+    const h=Math.floor(totalMin/60), min=totalMin%60;
+    html += `<td class="att-total">${h}h${min}m</td></tr>`;
+  });
+  // 日計行
+  const grandMin = Object.values(dayTotalsMin).reduce((a,b) => a+b, 0);
+  const gh = Math.floor(grandMin/60), gm = grandMin%60;
+  html += `<tr style="border-top:2px solid var(--navy);background:#e8eef5;">
+    <td class="name-col" style="font-weight:700;color:var(--navy);font-size:0.85rem;">📊 日計</td>`;
+  dates.forEach(d => {
+    const m = dayTotalsMin[d];
+    const h = Math.floor(m/60), mn = m%60;
+    html += `<td class="att-total" style="color:var(--navy);font-size:0.78rem;font-weight:700;">${m ? `${h}h${mn}m` : ''}</td>`;
+  });
+  html += `<td class="att-total" style="color:var(--navy);font-weight:700;">${gh}h${gm}m</td></tr>`;
+  html += '</tbody></table>';
+  el('att-grid').innerHTML = html;
+}
+
+// ─────────────────────────────────────────
+// ADMIN — SALARY CALCULATION
+// ─────────────────────────────────────────
+async function loadSal() {
+  const month = el('sal-month')?.value; if (!month || !db) return;
+  const [y, m] = month.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  el('sal-tbl').innerHTML = '<div class="loading">計算中...</div>';
+
+  const dates = Array.from({length: days}, (_, i) => `${month}-${pad(i+1)}`);
+  const attData = {};
+  await Promise.all(dates.map(async d => {
+    const s = await db.ref(`attendance/${d}`).once('value');
+    attData[d] = s.val() || {};
+  }));
+
+  const staff = Object.entries(staffMap).filter(([,s]) => s.active !== false);
+  let totalPay = 0;
+  let rows = '';
+
+  staff.forEach(([sid, s]) => {
+    let totalMs = 0;
+    dates.forEach(d => {
+      const recs = attData[d]?.[sid]?.records;
+      if (recs) {
+        const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
+        let workStart = null;
+        arr.forEach(r => {
+          if (r.type==='in' || r.type==='return') workStart = r.ts;
+          if ((r.type==='out' || r.type==='break') && workStart) { totalMs += r.ts - workStart; workStart = null; }
+        });
+      }
+    });
+    const hours = totalMs / 3600000;
+    const h = Math.floor(hours), mn = Ma
