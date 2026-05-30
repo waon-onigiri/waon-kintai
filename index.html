@@ -691,6 +691,8 @@ let todayRec = {};
 let selStaffId = null;
 let adminIn = false;
 let managerIn = false;
+let editDate = null;
+let editStaffId = null;
 let searchQ = '';
 const CFG_KEY = 'waaon_fb_cfg_v2';
 
@@ -1243,10 +1245,10 @@ async function loadSal() {
 // ADMIN — ATTENDANCE EDIT MODAL
 // ─────────────────────────────────────────
 async function openAttEdit(date, staffId) {
-  el('ae-date').textContent = date;
-  el('ae-name').textContent = staffMap[staffId]?.name || staffId;
-  el('ae-sid').value = staffId;
-  el('ae-date-val').value = date;
+  editDate = date;
+  editStaffId = staffId;
+  const name = staffMap[staffId]?.name || staffId;
+  el('mae-title').textContent = `${name} / ${date} の打刻修正`;
   const snap = await db.ref(`attendance/${date}/${staffId}/records`).once('value');
   const recs = snap.val() || {};
   const arr = Object.entries(recs).sort((a,b) => a[1].ts - b[1].ts);
@@ -1254,36 +1256,36 @@ async function openAttEdit(date, staffId) {
   const tagCls = { in:'rec-in', out:'rec-out', break:'rec-break', return:'rec-return' };
   let html = '';
   arr.forEach(([key, r]) => {
-    html += `<div class="ae-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
       <span class="rec-tag ${tagCls[r.type]||'rec-out'}">${tagMap[r.type]||r.type}</span>
       <span style="flex:1">${r.time}</span>
-      <button class="btn btn-danger btn-sm" onclick="delRec('${date}','${staffId}','${key}')">削除</button>
+      <button class="btn btn-danger btn-sm" onclick="delAttRecord('${key}')">削除</button>
     </div>`;
   });
-  el('ae-recs').innerHTML = html || '<div style="color:var(--gray);padding:8px 0;">記録なし</div>';
-  openModal('modal-att-edit');
+  el('mae-records').innerHTML = html || '<div style="color:var(--gray);padding:8px 0;">記録なし</div>';
+  openModal('modal-att-edit-wrap');
 }
 
-async function delRec(date, staffId, key) {
+function closeAttEdit() { closeModal('modal-att-edit-wrap'); }
+
+async function delAttRecord(key) {
   if (!confirm('この打刻を削除しますか？')) return;
-  await db.ref(`attendance/${date}/${staffId}/records/${key}`).remove();
-  await openAttEdit(date, staffId);
+  await db.ref(`attendance/${editDate}/${editStaffId}/records/${key}`).remove();
+  await openAttEdit(editDate, editStaffId);
   toast('削除しました', 'success');
 }
 
-async function addRec() {
-  const date = el('ae-date-val').value;
-  const staffId = el('ae-sid').value;
-  const type = el('ae-type').value;
-  const time = el('ae-time').value;
+async function addAttRecord() {
+  const type = el('mae-new-type').value;
+  const time = el('mae-new-time').value;
   if (!time) { toast('時刻を入力してください', 'error'); return; }
+  const base = new Date(editDate);
   const [hh, mm] = time.split(':').map(Number);
-  const now = new Date();
-  const base = new Date(date);
   base.setHours(hh, mm, 0, 0);
-  await db.ref(`attendance/${date}/${staffId}/records`).push({ type, time: time+':00', ts: base.getTime() });
+  await db.ref(`attendance/${editDate}/${editStaffId}/records`).push({ type, time: time+':00', ts: base.getTime() });
   toast('追加しました', 'success');
-  await openAttEdit(date, staffId);
+  el('mae-new-time').value = '';
+  await openAttEdit(editDate, editStaffId);
 }
 
 // ─────────────────────────────────────────
