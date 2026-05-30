@@ -1272,6 +1272,7 @@ async function delAttRecord(key) {
   if (!confirm('この打刻を削除しますか？')) return;
   await db.ref(`attendance/${editDate}/${editStaffId}/records/${key}`).remove();
   await openAttEdit(editDate, editStaffId);
+  loadAtt();
   toast('削除しました', 'success');
 }
 
@@ -1286,6 +1287,7 @@ async function addAttRecord() {
   toast('追加しました', 'success');
   el('mae-new-time').value = '';
   await openAttEdit(editDate, editStaffId);
+  loadAtt();
 }
 
 // ─────────────────────────────────────────
@@ -1338,6 +1340,3 @@ function toast(msg, type='success') {
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
 }
-</script>
-</body>
-</html>
