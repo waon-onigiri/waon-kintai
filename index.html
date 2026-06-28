@@ -431,9 +431,16 @@ body {
 /* ── 打刻修正モーダル ── */
 .mae-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); }
 .mae-row:last-child { border-bottom:none; }
-.mae-type { flex:0 0 72px; padding:5px 4px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; background:var(--bg); }
-.mae-time { flex:0 0 90px; padding:5px 6px; border:1px solid var(--border); border-radius:6px; font-size:0.92rem; }
-.mae-add-row { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:2px dashed var(--border); }
+.mae-add-section { margin-top:12px; padding-top:10px; border-top:2px dashed var(--border); }
+.mae-type-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.mae-type-btn { padding:8px 14px; border-radius:8px; border:2px solid var(--border); background:white; font-size:0.82rem; font-weight:700; cursor:pointer; transition:all 0.15s; color:var(--text); font-family:inherit; }
+.mae-type-btn[data-type="in"].active  { border-color:var(--green); background:var(--green); color:white; }
+.mae-type-btn[data-type="out"].active { border-color:var(--red); background:var(--red); color:white; }
+.mae-type-btn[data-type="break"].active  { border-color:var(--orange); background:var(--orange); color:white; }
+.mae-type-btn[data-type="return"].active { border-color:#2980b9; background:#2980b9; color:white; }
+.mae-time-row { display:flex; align-items:center; gap:8px; }
+.mae-time { width:100px; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:1rem; font-family:inherit; text-align:center; letter-spacing:0.05em; }
+.mae-time:focus { outline:none; border-color:var(--navy); }
 .att-table td.clickable { cursor:pointer; transition:background 0.15s; }
 .att-table td.clickable:hover { background:#e8f4fd; }
 </style>
@@ -661,18 +668,20 @@ body {
   <div class="modal" style="max-width:480px">
     <h3 id="mae-title">打刻修正</h3>
     <div id="mae-records" style="margin-top:12px;max-height:340px;overflow-y:auto;"></div>
-    <div class="mae-add-row">
-      <select id="mae-new-type" class="mae-type">
-        <option value="in">出勤</option>
-        <option value="break">休憩</option>
-        <option value="return">戻り</option>
-        <option value="out">退勤</option>
-      </select>
-      <input id="mae-new-time" class="mae-time" type="time">
-      <button class="btn btn-primary btn-sm" onclick="addAttRecord()">＋ 追加</button>
+    <div class="mae-add-section">
+      <div class="mae-type-btns">
+        <button class="mae-type-btn active" data-type="in"     onclick="selectMaeType(this)">出勤</button>
+        <button class="mae-type-btn"        data-type="out"    onclick="selectMaeType(this)">退勤</button>
+        <button class="mae-type-btn"        data-type="break"  onclick="selectMaeType(this)">休憓入り</button>
+        <button class="mae-type-btn"        data-type="return" onclick="selectMaeType(this)">休憓戻り</button>
+      </div>
+      <div class="mae-time-row">
+        <input id="mae-new-time" class="mae-time" type="text" placeholder="09:00" inputmode="numeric" maxlength="5">
+        <button class="btn btn-primary btn-sm" onclick="addAttRecord()">＋ 追加</button>
+      </div>
     </div>
     <div class="modal-acts" style="margin-top:16px">
-      <button class="btn btn-ghost btn-sm" onclick="closeAttEdit()">閉じる</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeAttEdit()">閉⼚る</button>
     </div>
   </div>
 </div>
@@ -966,7 +975,7 @@ function renderRecords() {
     return;
   }
   const arr = Object.values(recs).sort((a,b) => a.ts - b.ts);
-  const tagMap = { in:'出勤', out:'退勤', break:'休憩', return:'戻り' };
+  const tagMap = { in:'出勤', out:'退勤', break:'休憓入り', return:'休憓戻り' };
   const tagCls = { in:'rec-in', out:'rec-out', break:'rec-break', return:'rec-return' };
   let html = ''; let totalMs = 0; let workStart = null;
   arr.forEach(r => {
@@ -1253,7 +1262,7 @@ async function openAttEdit(date, staffId) {
   const snap = await db.ref(`attendance/${date}/${staffId}/records`).once('value');
   const recs = snap.val() || {};
   const arr = Object.entries(recs).sort((a,b) => a[1].ts - b[1].ts);
-  const tagMap = { in:'出勤', out:'退勤', break:'休憩', return:'戻り' };
+  const tagMap = { in:'出勤', out:'退勤', break:'休憓入り', return:'休憓戻り' };
   const tagCls = { in:'rec-in', out:'rec-out', break:'rec-break', return:'rec-return' };
   let html = '';
   arr.forEach(([key, r]) => {
@@ -1277,14 +1286,25 @@ async function delAttRecord(key) {
   toast('削除しました', 'success');
 }
 
+function selectMaeType(btn) {
+  document.querySelectorAll('.mae-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 async function addAttRecord() {
-  const type = el('mae-new-type').value;
-  const time = el('mae-new-time').value;
-  if (!time) { toast('時刻を入力してください', 'error'); return; }
+  const typeBtn = document.querySelector('.mae-type-btn.active');
+  const type = typeBtn?.dataset.type || 'in';
+  let timeVal = (el('mae-new-time').value || '').trim();
+  if (/^[0-9]{3,4}$/.test(timeVal)) {
+    const p = timeVal.padStart(4, '0');
+    timeVal = p.slice(0,2) + ':' + p.slice(2);
+  }
+  if (!/^[0-9]{2}:[0-9]{2}$/.test(timeVal)) { toast('時刻を入力してください（例：09:00）', 'error'); return; }
+  const [hh, mm] = timeVal.split(':').map(Number);
+  if (hh > 23 || mm > 59) { toast('正しい時刻を入力してください', 'error'); return; }
   const base = new Date(editDate);
-  const [hh, mm] = time.split(':').map(Number);
   base.setHours(hh, mm, 0, 0);
-  await db.ref(`attendance/${editDate}/${editStaffId}/records`).push({ type, time: time+':00', ts: base.getTime() });
+  await db.ref(`attendance/${editDate}/${editStaffId}/records`).push({ type, time: timeVal+':00', ts: base.getTime() });
   toast('追加しました', 'success');
   el('mae-new-time').value = '';
   await openAttEdit(editDate, editStaffId);
