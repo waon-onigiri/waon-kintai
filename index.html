@@ -355,9 +355,10 @@ body {
   text-align: center; white-space: nowrap;
 }
 .att-table thead th { background: var(--navy); color: white; font-weight: 700; }
-.att-table thead th.name-col { text-align: left; padding-left: 12px; }
-.att-table tbody td.name-col { text-align: left; padding-left: 12px; font-weight: 700; }
+.att-table thead th.name-col { text-align: left; padding-left: 12px; position: sticky; left: 0; z-index: 3; }
+.att-table tbody td.name-col { text-align: left; padding-left: 12px; font-weight: 700; position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 2px 0 4px rgba(0,0,0,0.06); }
 .att-table tbody tr:nth-child(even) td { background: #f9fafb; }
+.att-table tbody tr:nth-child(even) td.name-col { background: #f9fafb; }
 .att-in { color: #1a7a40; font-weight: 700; display: block; }
 .att-out { color: #a93226; font-weight: 700; display: block; }
 .att-warn { color: var(--orange); font-size: 0.72rem; }
