@@ -1225,6 +1225,7 @@ async function loadSal() {
 
   const staff = Object.entries(staffMap).filter(([,s]) => s.active !== false);
   let html = '<table class="sal-table"><thead><tr><th>氏名</th><th>時給</th><th>実働時間</th><th>給与（税前）</th></tr></thead><tbody>';
+  let grandTotal = 0;
   staff.forEach(([sid, s]) => {
     let totalMin = 0;
     dates.forEach(d => {
@@ -1245,9 +1246,10 @@ async function loadSal() {
     const h = Math.floor(totalMin / 60), min = totalMin % 60;
     const rate = s.hourlyRate || 0;
     const pay = Math.floor((totalMin / 60) * rate);
+    if (rate) grandTotal += pay;
     html += `<tr><td>${s.name}</td><td>${rate ? '¥'+rate.toLocaleString() : '未設定'}</td><td>${h}h${min}m</td><td>${rate ? '¥'+pay.toLocaleString() : '—'}</td></tr>`;
   });
-  html += '</tbody></table>';
+  html += `</tbody><tfoot><tr><td colspan="3">合計人件費（税前）</td><td>¥${grandTotal.toLocaleString()}</td></tr></tfoot></table>`;
   el('sal-tbl').innerHTML = html;
 }
 
